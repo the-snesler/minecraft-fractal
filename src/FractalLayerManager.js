@@ -114,7 +114,7 @@ export class FractalLayerManager {
                 centerX,
                 centerY,
                 Math.max(0, depth),
-                Math.max(0, subZoom),
+                subZoom,
                 this.screenWidth,
                 this.screenHeight,
                 this.rootBlockId,

@@ -98,12 +98,14 @@ export class FractalLayer {
 
         // Compute blockId using adjusted ancestry
         let blockId = rootBlockId;
-        for (let d = 0; d < ancestryX.length; d++) {
+        for (let d = 1; d < ancestryX.length; d++) {
             blockId = this.lut.getPixelBlock(blockId, ancestryX[d], ancestryY[d]);
         }
 
         // Final lookup
-        blockId = this.lut.getPixelBlock(blockId, finalX, finalY);
+        if (ancestryX.length > 0) {
+            blockId = this.lut.getPixelBlock(blockId, finalX, finalY);
+        }
 
         // Cache with LRU eviction
         if (this.blockCache.size >= this.maxCacheSize) {

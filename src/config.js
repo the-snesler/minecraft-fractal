@@ -20,10 +20,10 @@ export const CONFIG = {
     rootBlock: 'obsidian',
 
     // Visible grid buffer (extra blocks beyond screen edge)
-    gridBuffer: 2,
+    gridBuffer: 16,
 
     // Minimum zoom level (negative = can zoom out from start)
-    minZoom: -0.5,
+    minZoom: -0.2,
 
     // Base block size in pixels on screen
     blockSize: 16,

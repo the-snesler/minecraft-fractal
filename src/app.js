@@ -96,6 +96,8 @@ class MinecraftFractalApp {
         // Get state and update renderer
         const state = this.zoomController.getState();
         this.layerManager.update(state);
+        // debug
+        document.getElementById('info').innerText = JSON.stringify(state, null, 2);
     }
 }
 

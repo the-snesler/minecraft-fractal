@@ -142,7 +142,7 @@ export class ZoomPanController {
         // Each layer is relative to its parent block, so 0-16 is the "home" range
         // Allow some buffer for smooth edge handling
         const current = this.getCurrentLayer();
-        const buffer = 2;
+        const buffer = CONFIG.gridBuffer;
         current.x = Math.max(-buffer, Math.min(16 + buffer, current.x));
         current.y = Math.max(-buffer, Math.min(16 + buffer, current.y));
     }
@@ -275,13 +275,13 @@ export class ZoomPanController {
      */
     getState() {
         const depth = Math.max(0, Math.floor(this.currentZoom));
-        const subZoom = this.currentZoom - Math.floor(this.currentZoom);
+        const subZoom = this.currentZoom > 0 ? this.currentZoom - Math.floor(this.currentZoom) : this.currentZoom;
         const current = this.getCurrentLayer();
 
         return {
             zoom: this.currentZoom,
             depth,
-            subZoom: Math.max(0, subZoom),
+            subZoom: subZoom,
             centerX: current.x,
             centerY: current.y,
             layerStack: this.layerStack, // Pass full stack for block ancestry
