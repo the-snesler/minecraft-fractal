@@ -51,7 +51,7 @@ export class FractalLayerManager {
      * @param {object} state - State from ZoomPanController
      */
     update(state) {
-        const { depth, subZoom, centerX, centerY } = state;
+        const { depth, subZoom, centerX, centerY, layerStack } = state;
 
         // Handle depth change (swap layers)
         if (depth !== this.currentDepth) {
@@ -75,19 +75,35 @@ export class FractalLayerManager {
                 subZoom,
                 this.screenWidth,
                 this.screenHeight,
-                this.rootBlockId
+                this.rootBlockId,
+                layerStack
             );
 
             // Render next layer (depth + 1)
-            // Next layer coordinates are scaled up by 16
+            // Compute next layer's local coordinates (scaled from current fractional position)
+            const fracX = (centerX - Math.floor(centerX)) * 16;
+            const fracY = (centerY - Math.floor(centerY)) * 16;
+
+            // Create temporary extended stack for next layer
+            const nextLayerStack = [
+                ...layerStack,
+                {
+                    parentBlockX: Math.floor(centerX),
+                    parentBlockY: Math.floor(centerY),
+                    x: fracX,
+                    y: fracY,
+                },
+            ];
+
             this.nextLayer.render(
-                centerX * 16,
-                centerY * 16,
+                fracX,
+                fracY,
                 depth + 1,
                 subZoom - 1, // Negative subZoom = zoomed out from this level
                 this.screenWidth,
                 this.screenHeight,
-                this.rootBlockId
+                this.rootBlockId,
+                nextLayerStack
             );
         } else {
             // Not transitioning
@@ -101,7 +117,8 @@ export class FractalLayerManager {
                 Math.max(0, subZoom),
                 this.screenWidth,
                 this.screenHeight,
-                this.rootBlockId
+                this.rootBlockId,
+                layerStack
             );
         }
 

@@ -53,29 +53,57 @@ export class FractalLayer {
     }
 
     /**
-     * Resolve which block appears at position (x, y) at given depth
+     * Resolve which block appears at position (x, y) at given depth using layer stack
+     * Handles positions outside 0-15 by adjusting ancestry (carrying overflow)
      */
-    resolveBlock(x, y, depth, rootBlockId) {
-        // Handle coordinates outside 0-16 range by wrapping
-        const size = Math.pow(16, depth);
-        x = ((x % size) + size) % size;
-        y = ((y % size) + size) % size;
+    resolveBlock(localX, localY, depth, rootBlockId, layerStack) {
+        // Build ancestry array from layer stack
+        const ancestryX = [];
+        const ancestryY = [];
+        for (let d = 1; d <= depth && d < layerStack.length; d++) {
+            ancestryX.push(layerStack[d].parentBlockX);
+            ancestryY.push(layerStack[d].parentBlockY);
+        }
 
-        // Check cache
-        const cacheKey = `${Math.floor(x)},${Math.floor(y)},${depth}`;
+        // Final pixel position
+        let finalX = Math.floor(localX);
+        let finalY = Math.floor(localY);
+
+        // Handle positions outside 0-15 by carrying to ancestry
+        // e.g., localX=17 becomes finalX=1 with carry=1 to parent
+        let carryX = Math.floor(finalX / 16);
+        let carryY = Math.floor(finalY / 16);
+        finalX = ((finalX % 16) + 16) % 16;
+        finalY = ((finalY % 16) + 16) % 16;
+
+        // Propagate carry up through ancestry (bottom to top)
+        for (let d = ancestryX.length - 1; d >= 0 && (carryX !== 0 || carryY !== 0); d--) {
+            ancestryX[d] += carryX;
+            ancestryY[d] += carryY;
+
+            // Compute new carry for next level
+            carryX = Math.floor(ancestryX[d] / 16);
+            carryY = Math.floor(ancestryY[d] / 16);
+
+            // Normalize to 0-15
+            ancestryX[d] = ((ancestryX[d] % 16) + 16) % 16;
+            ancestryY[d] = ((ancestryY[d] % 16) + 16) % 16;
+        }
+
+        // Build cache key from adjusted ancestry
+        const cacheKey = `${ancestryX.join(',')}|${ancestryY.join(',')}:${finalX},${finalY}`;
         if (this.blockCache.has(cacheKey)) {
             return this.blockCache.get(cacheKey);
         }
 
+        // Compute blockId using adjusted ancestry
         let blockId = rootBlockId;
-
-        // Walk down the fractal tree
-        for (let d = 0; d < depth; d++) {
-            const scale = Math.pow(16, depth - d - 1);
-            const px = Math.floor(x / scale) % 16;
-            const py = Math.floor(y / scale) % 16;
-            blockId = this.lut.getPixelBlock(blockId, px, py);
+        for (let d = 0; d < ancestryX.length; d++) {
+            blockId = this.lut.getPixelBlock(blockId, ancestryX[d], ancestryY[d]);
         }
+
+        // Final lookup
+        blockId = this.lut.getPixelBlock(blockId, finalX, finalY);
 
         // Cache with LRU eviction
         if (this.blockCache.size >= this.maxCacheSize) {
@@ -89,15 +117,16 @@ export class FractalLayer {
 
     /**
      * Render visible blocks
-     * @param {number} centerX - Center X in current-depth block coordinates
-     * @param {number} centerY - Center Y in current-depth block coordinates
+     * @param {number} centerX - Center X in current-depth local coordinates (0-16 range)
+     * @param {number} centerY - Center Y in current-depth local coordinates (0-16 range)
      * @param {number} depth - Fractal depth (integer)
      * @param {number} subZoom - Sub-zoom within level (-1 to 1)
      * @param {number} screenWidth - Screen width in pixels
      * @param {number} screenHeight - Screen height in pixels
      * @param {number} rootBlockId - Root block ID
+     * @param {Array} layerStack - Stack of layer positions for block ancestry
      */
-    render(centerX, centerY, depth, subZoom, screenWidth, screenHeight, rootBlockId) {
+    render(centerX, centerY, depth, subZoom, screenWidth, screenHeight, rootBlockId, layerStack) {
         const blockSize = CONFIG.blockSize;
 
         // Visual scale based on subZoom
@@ -130,8 +159,8 @@ export class FractalLayer {
                 const blockX = startBlockX + dx;
                 const blockY = startBlockY + dy;
 
-                // Resolve block at this position
-                const blockId = this.resolveBlock(blockX, blockY, depth, rootBlockId);
+                // Resolve block at this position using layer stack
+                const blockId = this.resolveBlock(blockX, blockY, depth, rootBlockId, layerStack);
 
                 // Get sprite from pool
                 const sprite = this.sprites[spriteIndex++];

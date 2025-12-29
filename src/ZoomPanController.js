@@ -17,14 +17,11 @@ export class ZoomPanController {
         this.targetZoom = 0;
         this.currentZoom = 0;
 
-        // Pan state (in current-depth block coordinates)
-        // At depth 0: centered on root block
-        // At depth 1: coordinates are in 16x16 pixel space of root block
-        // etc.
-        this.centerX = 8; // Start at center of root block
-        this.centerY = 8;
+        // Layer stack: each entry has local coordinates (0-16 range) for that depth
+        // This prevents coordinate explosion at deep zoom levels
+        this.layerStack = [{ x: 8, y: 8, parentBlockX: 0, parentBlockY: 0 }];
 
-        // Track current integer depth for coordinate transforms
+        // Track current integer depth for layer management
         this.currentDepth = 0;
 
         // Drag state
@@ -48,6 +45,13 @@ export class ZoomPanController {
         this.canvas.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
         this.canvas.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
         this.canvas.addEventListener('touchend', this.onTouchEnd.bind(this));
+    }
+
+    /**
+     * Get the current (topmost) layer
+     */
+    getCurrentLayer() {
+        return this.layerStack[this.layerStack.length - 1];
     }
 
     /**
@@ -93,8 +97,9 @@ export class ZoomPanController {
         const zoomFactor = Math.pow(16, delta);
         const adjustment = 1 - 1 / zoomFactor;
 
-        this.centerX += blockOffsetX * adjustment;
-        this.centerY += blockOffsetY * adjustment;
+        const current = this.getCurrentLayer();
+        current.x += blockOffsetX * adjustment;
+        current.y += blockOffsetY * adjustment;
     }
 
     onMouseDown(e) {
@@ -125,22 +130,21 @@ export class ZoomPanController {
         // Convert screen delta to block delta using VISUAL scale only
         const scale = this.getVisualScale();
 
-        this.centerX += screenDx / scale;
-        this.centerY += screenDy / scale;
+        const current = this.getCurrentLayer();
+        current.x += screenDx / scale;
+        current.y += screenDy / scale;
 
         this.clampCenter();
     }
 
     clampCenter() {
-        // Limit pan range in current-depth coordinates
-        const maxPan = CONFIG.maxPanDistance;
-        if (maxPan !== Infinity) {
-            // At each depth, valid range is 0 to 16 (within parent block)
-            // But we allow some overflow for smooth edge handling
-            const limit = 16 + maxPan;
-            this.centerX = Math.max(-maxPan, Math.min(limit, this.centerX));
-            this.centerY = Math.max(-maxPan, Math.min(limit, this.centerY));
-        }
+        // Clamp current layer to stay within reasonable bounds
+        // Each layer is relative to its parent block, so 0-16 is the "home" range
+        // Allow some buffer for smooth edge handling
+        const current = this.getCurrentLayer();
+        const buffer = 2;
+        current.x = Math.max(-buffer, Math.min(16 + buffer, current.x));
+        current.y = Math.max(-buffer, Math.min(16 + buffer, current.y));
     }
 
     // Touch handlers
@@ -228,30 +232,41 @@ export class ZoomPanController {
     }
 
     /**
-     * Handle depth transition - transform coordinates
+     * Handle depth transition - push/pop layer stack
      */
     onDepthChange(newDepth) {
         const depthDelta = newDepth - this.currentDepth;
 
         if (depthDelta > 0) {
-            // Zooming in: coordinates scale up by 16
-            // centerX=8 at depth 0 becomes centerX=128 at depth 1
+            // Zooming in: push new layer(s)
             for (let i = 0; i < depthDelta; i++) {
-                this.centerX *= 16;
-                this.centerY *= 16;
+                const current = this.getCurrentLayer();
+                // New layer starts at the fractional position within current block
+                const fracX = (current.x - Math.floor(current.x)) * 16;
+                const fracY = (current.y - Math.floor(current.y)) * 16;
+                this.layerStack.push({
+                    parentBlockX: Math.floor(current.x),
+                    parentBlockY: Math.floor(current.y),
+                    x: fracX,
+                    y: fracY,
+                });
             }
-        } else {
-            // Zooming out: coordinates scale down by 16
-            for (let i = 0; i < -depthDelta; i++) {
-                this.centerX /= 16;
-                this.centerY /= 16;
+        } else if (depthDelta < 0) {
+            // Zooming out: pop layer(s) and restore parent position
+            for (let i = 0; i < -depthDelta && this.layerStack.length > 1; i++) {
+                const popped = this.layerStack.pop();
+                const parent = this.getCurrentLayer();
+                // Restore parent position from the block we came from
+                parent.x = popped.parentBlockX + (popped.x / 16);
+                parent.y = popped.parentBlockY + (popped.y / 16);
             }
         }
 
         this.currentDepth = newDepth;
 
         if (CONFIG.debug) {
-            console.log(`Depth changed to ${newDepth}, center: (${this.centerX.toFixed(2)}, ${this.centerY.toFixed(2)})`);
+            const current = this.getCurrentLayer();
+            console.log(`Depth changed to ${newDepth}, layer ${this.layerStack.length}, pos: (${current.x.toFixed(2)}, ${current.y.toFixed(2)})`);
         }
     }
 
@@ -261,13 +276,15 @@ export class ZoomPanController {
     getState() {
         const depth = Math.max(0, Math.floor(this.currentZoom));
         const subZoom = this.currentZoom - Math.floor(this.currentZoom);
+        const current = this.getCurrentLayer();
 
         return {
             zoom: this.currentZoom,
             depth,
             subZoom: Math.max(0, subZoom),
-            centerX: this.centerX,
-            centerY: this.centerY,
+            centerX: current.x,
+            centerY: current.y,
+            layerStack: this.layerStack, // Pass full stack for block ancestry
         };
     }
 }

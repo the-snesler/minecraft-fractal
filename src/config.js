@@ -14,7 +14,7 @@ export const CONFIG = {
 
     // Maximum pan distance in blocks at current zoom level
     // Set to Infinity for unlimited panning (but may cause precision issues at deep zooms)
-    maxPanDistance: 256,
+    maxPanDistance: 512,
 
     // Starting block for the fractal
     rootBlock: 'obsidian',
