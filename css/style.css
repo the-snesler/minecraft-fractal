@@ -1,1 +1,0 @@
-*{box-sizing:border-box;image-rendering:pixelated}html,body{margin:0;padding:0;overflow:hidden;background:#888}#fractal{height:100vh;width:100vw;background:#888}#loading{position:absolute;inset:0;background:url(../block/dirt.png);background-repeat:repeat;background-size:64px;display:none}.loading #loading{display:block}/*# sourceMappingURL=style.css.map */

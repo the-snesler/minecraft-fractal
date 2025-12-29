@@ -49,13 +49,13 @@ fs.readdir("./block", async (err, files) => {
     }));
     
     fs.writeFile(
-        "./blockData.json",
+        "./dist/blockData.json",
         JSON.stringify(validBlockData),
         (err) => {
             if (err) {
                 return console.log(err);
             }
-            console.log(`${Object.entries(validBlockData).length} blocks saved to blockData.json`);
+            console.log(`${Object.entries(validBlockData).length} blocks saved to dist/blockData.json`);
         }
     );
 });
