@@ -9,15 +9,15 @@ import { FractalLayer } from './FractalLayer.js';
 import { CONFIG } from './config.js';
 
 export class FractalLayerManager {
-    constructor(stage, atlas, lut, atlasMeta) {
+    constructor(stage, spritesheet, lut, atlasMeta) {
         this.stage = stage;
-        this.atlas = atlas;
+        this.spritesheet = spritesheet;
         this.lut = lut;
         this.meta = atlasMeta;
 
         // Two layers for crossfade
-        this.layerA = new FractalLayer(atlas, lut, atlasMeta);
-        this.layerB = new FractalLayer(atlas, lut, atlasMeta);
+        this.layerA = new FractalLayer(spritesheet, lut, atlasMeta);
+        this.layerB = new FractalLayer(spritesheet, lut, atlasMeta);
 
         // Current and next layer references
         this.currentLayer = this.layerA;

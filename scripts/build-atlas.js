@@ -30,29 +30,48 @@ async function main() {
 
     console.log(`Found ${blockCount} blocks`);
 
-    // Calculate grid size
+    // Calculate grid size (18px cells = 16px block + 1px padding on each side)
+    const CELL_SIZE = 16;
+    const PADDING = 1;
+    const PADDED_CELL = CELL_SIZE + PADDING * 2;
     const gridWidth = Math.ceil(Math.sqrt(blockCount));
     const gridHeight = Math.ceil(blockCount / gridWidth);
-    const atlasWidth = nextPowerOfTwo(gridWidth * 16);
-    const atlasHeight = nextPowerOfTwo(gridHeight * 16);
+    const atlasWidth = nextPowerOfTwo(gridWidth * PADDED_CELL);
+    const atlasHeight = nextPowerOfTwo(gridHeight * PADDED_CELL);
 
-    console.log(`Atlas size: ${atlasWidth}x${atlasHeight} (${gridWidth}x${gridHeight} grid)`);
+    console.log(`Atlas size: ${atlasWidth}x${atlasHeight} (${gridWidth}x${gridHeight} grid, ${PADDING}px padding)`);
 
     // Create composite operations
+    // Each block gets 1px padding filled by clamping (repeating edge pixels)
     const composites = [];
     const blocks = {};
 
     for (let i = 0; i < blockNames.length; i++) {
         const name = blockNames[i];
-        const x = (i % gridWidth) * 16;
-        const y = Math.floor(i / gridWidth) * 16;
+        const cellX = (i % gridWidth) * PADDED_CELL;
+        const cellY = Math.floor(i / gridWidth) * PADDED_CELL;
+        const blockFile = path.join(BLOCK_DIR, `${name}.png`);
+
+        // Extend the block by 1px on each side using sharp's extend with edge clamping
+        const padded = await sharp(blockFile)
+            .extend({
+                top: PADDING,
+                bottom: PADDING,
+                left: PADDING,
+                right: PADDING,
+                extendWith: 'copy',
+            })
+            .toBuffer();
 
         composites.push({
-            input: path.join(BLOCK_DIR, `${name}.png`),
-            left: x,
-            top: y,
+            input: padded,
+            left: cellX,
+            top: cellY,
         });
 
+        // The actual frame starts inside the padding
+        const x = cellX + PADDING;
+        const y = cellY + PADDING;
         blocks[name] = { x, y, id: i };
     }
 
@@ -77,12 +96,24 @@ async function main() {
 
     console.log(`Written ${OUTPUT_PNG}`);
 
-    // Write metadata
+    // Write metadata in PixiJS Spritesheet format
+    const frames = {};
+    for (const [name, info] of Object.entries(blocks)) {
+        frames[name] = {
+            frame: { x: info.x, y: info.y, w: 16, h: 16 },
+            sourceSize: { w: 16, h: 16 },
+            spriteSourceSize: { x: 0, y: 0, w: 16, h: 16 },
+        };
+    }
+
     const metadata = {
-        size: { width: atlasWidth, height: atlasHeight },
-        cellSize: 16,
-        gridWidth,
-        gridHeight,
+        frames,
+        meta: {
+            image: 'atlas.png',
+            size: { w: atlasWidth, h: atlasHeight },
+            scale: 1,
+        },
+        // Custom fields for our app
         blockCount,
         blocks,
     };

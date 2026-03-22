@@ -9,8 +9,7 @@ import * as PIXI from 'pixi.js';
 import { CONFIG } from './config.js';
 
 export class FractalLayer {
-    constructor(atlas, lut, atlasMeta) {
-        this.atlas = atlas;
+    constructor(spritesheet, lut, atlasMeta) {
         this.lut = lut;
         this.meta = atlasMeta;
 
@@ -19,7 +18,9 @@ export class FractalLayer {
 
         // Texture cache (block ID -> PIXI.Texture)
         this.textureCache = new Map();
-        this.buildTextureCache();
+        for (const [name, info] of Object.entries(atlasMeta.blocks)) {
+            this.textureCache.set(info.id, spritesheet.textures[name]);
+        }
 
         // Sprite pool
         this.sprites = [];
@@ -28,15 +29,6 @@ export class FractalLayer {
         // Block resolution cache
         this.blockCache = new Map();
         this.maxCacheSize = 50000;
-    }
-
-    buildTextureCache() {
-        const { blocks } = this.meta;
-        for (const [name, info] of Object.entries(blocks)) {
-            const rect = new PIXI.Rectangle(info.x, info.y, 16, 16);
-            const texture = new PIXI.Texture({ source: this.atlas.source, frame: rect });
-            this.textureCache.set(info.id, texture);
-        }
     }
 
     getTexture(blockId) {

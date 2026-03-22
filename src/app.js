@@ -47,13 +47,16 @@ class MinecraftFractalApp {
                 this.loadLUT(),
             ]);
 
-            console.log('Assets loaded');
             console.log(`Atlas: ${atlasMeta.blockCount} blocks`);
+
+            // Parse spritesheet for proper per-frame texture boundaries
+            const spritesheet = new PIXI.Spritesheet(atlasTexture, atlasMeta);
+            await spritesheet.parse();
 
             // Initialize layer manager
             this.layerManager = new FractalLayerManager(
                 this.app.stage,
-                atlasTexture,
+                spritesheet,
                 this.lut,
                 atlasMeta
             );
@@ -74,9 +77,6 @@ class MinecraftFractalApp {
             // Initial render
             const initialState = this.zoomController.getState();
             this.layerManager.update(initialState);
-
-            console.log('Minecraft Fractal Viewer initialized');
-            console.log('Controls: Scroll to zoom, drag to pan');
 
         } catch (error) {
             console.error('Failed to initialize:', error);
