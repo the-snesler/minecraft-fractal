@@ -1,0 +1,59 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Download Bedrock textures
+      - name: Download Bedrock samples
+        run: |
+          curl -L -o bedrock-samples.zip \
+            "https://github.com/Mojang/bedrock-samples/releases/download/v1.26.20.21-preview/bedrock-samples-v1.26.20.21-preview-full.zip"
+          unzip -q bedrock-samples.zip -d bedrock-samples
+          mkdir -p block
+          cp bedrock-samples/resource_pack/textures/blocks/*.png block/
+          rm -rf bedrock-samples bedrock-samples.zip
+
+      # Build everything (process-textures -> generate-lut -> build-atlas -> bundle)
+      - run: npm run build
+
+      - name: Prepare pages artifact
+        run: |
+          mkdir _site
+          cp index.html _site/
+          cp -r dist _site/dist
+
+      - uses: actions/upload-pages-artifact@v3
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
