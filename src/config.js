@@ -4,7 +4,7 @@
 export const CONFIG = {
     // Zoom threshold: when to start crossfade transition (0.0 - 1.0)
     // 0.7 means start transition when 70% zoomed into current level
-    zoomThreshold: 0.7,
+    zoomThreshold: 0.9,
 
     // Zoom smoothness (lower = smoother but slower response)
     zoomSmoothness: 0.12,

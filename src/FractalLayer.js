@@ -77,7 +77,7 @@ export class FractalLayer {
         finalY = ((finalY % 16) + 16) % 16;
 
         // Propagate carry up through ancestry (bottom to top)
-        for (let d = ancestryX.length - 1; d >= 0 && (carryX !== 0 || carryY !== 0); d--) {
+        for (let d = ancestryX.length - 1; d >= 0; d--) {
             ancestryX[d] += carryX;
             ancestryY[d] += carryY;
 
@@ -113,7 +113,6 @@ export class FractalLayer {
             this.blockCache.delete(firstKey);
         }
         this.blockCache.set(cacheKey, blockId);
-
         return blockId;
     }
 
