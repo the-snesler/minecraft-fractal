@@ -29,6 +29,9 @@ export class ZoomPanController {
         this.lastMouseX = 0;
         this.lastMouseY = 0;
 
+        // Zoom anchor (screen-space point to zoom towards)
+        this.zoomAnchor = null;
+
         // Touch state
         this.lastTouchDistance = 0;
         this.lastTouchCenter = { x: 0, y: 0 };
@@ -73,27 +76,37 @@ export class ZoomPanController {
         // Apply min zoom limit
         this.targetZoom = Math.max(CONFIG.minZoom, newZoom);
 
-        // Zoom towards cursor
-        this.zoomTowards(e.clientX, e.clientY, zoomDelta);
+        // Set zoom anchor to cursor position
+        const rect = this.canvas.getBoundingClientRect();
+        this.zoomAnchor = {
+            screenX: e.clientX - rect.left,
+            screenY: e.clientY - rect.top,
+        };
     }
 
-    zoomTowards(screenX, screenY, delta) {
+    /**
+     * Apply zoom-towards-anchor adjustment for an incremental zoom change.
+     * Called from update() so position shifts stay in sync with the actual zoom.
+     */
+    applyZoomAnchor(zoomBefore, zoomAfter) {
+        if (!this.zoomAnchor) return;
+
         const rect = this.canvas.getBoundingClientRect();
         const centerScreenX = rect.width / 2;
         const centerScreenY = rect.height / 2;
 
-        // Offset from center in screen pixels
-        const offsetX = screenX - rect.left - centerScreenX;
-        const offsetY = screenY - rect.top - centerScreenY;
+        const offsetX = this.zoomAnchor.screenX - centerScreenX;
+        const offsetY = this.zoomAnchor.screenY - centerScreenY;
 
-        // Current visual scale
-        const scale = this.getVisualScale();
+        // Scale at the old zoom
+        const scaleBefore = CONFIG.blockSize * Math.pow(16, zoomBefore - Math.floor(zoomBefore));
 
-        // Convert screen offset to block offset
-        const blockOffsetX = offsetX / scale;
-        const blockOffsetY = offsetY / scale;
+        // Convert screen offset to block offset at old scale
+        const blockOffsetX = offsetX / scaleBefore;
+        const blockOffsetY = offsetY / scaleBefore;
 
-        // Adjust center to zoom towards cursor
+        // How much did zoom actually change this frame
+        const delta = zoomAfter - zoomBefore;
         const zoomFactor = Math.pow(16, delta);
         const adjustment = 1 - 1 / zoomFactor;
 
@@ -217,11 +230,21 @@ export class ZoomPanController {
      */
     update() {
         // Smooth zoom interpolation
+        const prevZoom = this.currentZoom;
         const diff = this.targetZoom - this.currentZoom;
         if (Math.abs(diff) > 0.0001) {
             this.currentZoom += diff * CONFIG.zoomSmoothness;
         } else {
             this.currentZoom = this.targetZoom;
+        }
+
+        // Apply zoom-towards-anchor incrementally, in sync with actual zoom change
+        if (this.currentZoom !== prevZoom) {
+            this.applyZoomAnchor(prevZoom, this.currentZoom);
+        }
+        // Clear anchor once zoom has settled
+        if (this.currentZoom === this.targetZoom) {
+            this.zoomAnchor = null;
         }
 
         // Check for depth change and transform coordinates
