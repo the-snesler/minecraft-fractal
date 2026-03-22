@@ -134,9 +134,6 @@ export class FractalLayerManager {
         this.currentLayer = this.nextLayer;
         this.nextLayer = temp;
 
-        // Clear the recycled layer's cache
-        this.nextLayer.clearCache();
-
         // Re-order in stage
         this.stage.removeChild(this.currentLayer.container);
         this.stage.removeChild(this.nextLayer.container);

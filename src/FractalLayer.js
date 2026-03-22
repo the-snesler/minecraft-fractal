@@ -7,6 +7,7 @@
 
 import * as PIXI from 'pixi.js';
 import { CONFIG } from './config.js';
+import { getBlockFromCache, setBlockInCache } from './BlockCache.js';
 
 export class FractalLayer {
     constructor(spritesheet, lut, atlasMeta) {
@@ -25,10 +26,6 @@ export class FractalLayer {
         // Sprite pool
         this.sprites = [];
         this.activeCount = 0;
-
-        // Block resolution cache
-        this.blockCache = new Map();
-        this.maxCacheSize = 50000;
     }
 
     getTexture(blockId) {
@@ -84,14 +81,25 @@ export class FractalLayer {
 
         // Build cache key from adjusted ancestry
         const cacheKey = `${ancestryX.join(',')}|${ancestryY.join(',')}:${finalX},${finalY}`;
-        if (this.blockCache.has(cacheKey)) {
-            return this.blockCache.get(cacheKey);
+        const cacheCheck = getBlockFromCache(cacheKey);
+        if (cacheCheck !== null) {
+            return cacheCheck;
         }
 
-        // Compute blockId using adjusted ancestry
-        let blockId = rootBlockId;
-        for (let d = 1; d < ancestryX.length; d++) {
-            blockId = this.lut.getPixelBlock(blockId, ancestryX[d], ancestryY[d]);
+        const parentKey = `${ancestryX.slice(0, -1).join(',')}|${ancestryY.slice(0, -1).join(',')}:${ancestryX.slice(-1)[0]},${ancestryY.slice(-1)[0]}`;
+
+        let blockId;
+        const parentCacheCheck = getBlockFromCache(parentKey);
+        if (parentCacheCheck !== null) {
+            // If parent block is cached, we can skip directly to final lookup
+            blockId = parentCacheCheck;
+        }
+        if (!blockId) {
+            // Compute blockId using adjusted ancestry
+            blockId = rootBlockId;
+            for (let d = 1; d < ancestryX.length; d++) {
+                blockId = this.lut.getPixelBlock(blockId, ancestryX[d], ancestryY[d]);
+            }
         }
 
         // Final lookup
@@ -99,12 +107,7 @@ export class FractalLayer {
             blockId = this.lut.getPixelBlock(blockId, finalX, finalY);
         }
 
-        // Cache with LRU eviction
-        if (this.blockCache.size >= this.maxCacheSize) {
-            const firstKey = this.blockCache.keys().next().value;
-            this.blockCache.delete(firstKey);
-        }
-        this.blockCache.set(cacheKey, blockId);
+        setBlockInCache(cacheKey, blockId);
         return blockId;
     }
 
