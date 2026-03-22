@@ -14,6 +14,8 @@ const blacklist = [
     "jigsaw.*",
     ".*door.*",
     "respawn_anchor.*",
+    "trial_spawner.*",
+    "calibrated_sculk.*"
 ]
 
 fs.readdir("./block", async (err, files) => {
