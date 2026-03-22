@@ -79,8 +79,8 @@ class KDTree {
     }
 }
 
-async function loadBlockPixels(blockName) {
-    const filePath = path.join(BLOCK_DIR, `${blockName}.png`);
+async function loadBlockPixels(blockName, blockData) {
+    const filePath = blockData[blockName].path || path.join(BLOCK_DIR, `${blockName}.png`);
     const { data, info } = await sharp(filePath)
         .raw()
         .toBuffer({ resolveWithObject: true });
@@ -124,7 +124,7 @@ async function main() {
 
     for (const blockName of blockNames) {
         const blockId = blockToId.get(blockName);
-        const pixels = await loadBlockPixels(blockName);
+        const pixels = await loadBlockPixels(blockName, blockData);
 
         for (let i = 0; i < 256; i++) {
             const pixel = pixels[i];

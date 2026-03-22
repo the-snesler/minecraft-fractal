@@ -50,7 +50,7 @@ async function main() {
         const name = blockNames[i];
         const cellX = (i % gridWidth) * PADDED_CELL;
         const cellY = Math.floor(i / gridWidth) * PADDED_CELL;
-        const blockFile = path.join(BLOCK_DIR, `${name}.png`);
+        const blockFile = blockData[name].path || path.join(BLOCK_DIR, `${name}.png`);
 
         // Extend the block by 1px on each side using sharp's extend with edge clamping
         const padded = await sharp(blockFile)

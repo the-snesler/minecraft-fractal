@@ -1,5 +1,6 @@
 import { getAverageColor } from "fast-average-color-node";
 import fs from "fs";
+import path from "path";
 import PImage from "pureimage";
 
 let validBlockData = {};
@@ -18,46 +19,49 @@ const blacklist = [
     "calibrated_sculk.*"
 ]
 
-fs.readdir("./block", async (err, files) => {
-    if (err) {
-        console.log(err);
-        return;
+function findPngs(dir) {
+    const results = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+            results.push(...findPngs(fullPath));
+        } else if (entry.name.endsWith(".png")) {
+            results.push(fullPath);
+        }
     }
+    return results;
+}
 
-    await Promise.all(files.map(async (file) => {
-        if (!file.endsWith(".png")) return Promise.resolve();
-        if (blacklist.some((regex) => file.match(regex))) {
-            console.log(`Skipping ${file}`);
-            return Promise.resolve();
+async function main() {
+    const files = findPngs("./block");
+
+    await Promise.all(files.map(async (filePath) => {
+        const name = path.basename(filePath, ".png");
+        if (blacklist.some((regex) => name.match(regex))) {
+            console.log(`Skipping ${name}`);
+            return;
         }
-        return PImage.decodePNGFromStream(
-            fs.createReadStream("./block/" + file)
-        ).then((img) => {
-            if (img.width !== img.height) return;
+        const img = await PImage.decodePNGFromStream(fs.createReadStream(filePath));
+        if (img.width !== img.height) return;
 
-            for (let x = 0; x < img.width; x++) {
-                for (let y = 0; y < img.height; y++) {
-                    if ((img.getPixelRGBA(x, y) & 0xff) !== 255) return;
-                }
+        for (let x = 0; x < img.width; x++) {
+            for (let y = 0; y < img.height; y++) {
+                if ((img.getPixelRGBA(x, y) & 0xff) !== 255) return;
             }
+        }
 
-            return getAverageColor("./block/" + file).then((color) => {
-                validBlockData[file.replace(".png", "")] = {color: color.value.slice(
-                    0,
-                    3
-                )}
-            });
-        });
+        const color = await getAverageColor(filePath);
+        // Use filename as block name, store relative path for atlas builder
+        const relPath = path.relative(".", filePath).split(path.sep).join("/");
+        validBlockData[name] = {
+            color: color.value.slice(0, 3),
+            path: relPath,
+        };
     }));
-    
-    fs.writeFile(
-        "./dist/blockData.json",
-        JSON.stringify(validBlockData),
-        (err) => {
-            if (err) {
-                return console.log(err);
-            }
-            console.log(`${Object.entries(validBlockData).length} blocks saved to dist/blockData.json`);
-        }
-    );
-});
+
+    fs.mkdirSync("./dist", { recursive: true });
+    fs.writeFileSync("./dist/blockData.json", JSON.stringify(validBlockData));
+    console.log(`${Object.keys(validBlockData).length} blocks saved to dist/blockData.json`);
+}
+
+main().catch(console.error);

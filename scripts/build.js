@@ -34,6 +34,11 @@ function runScript(scriptPath) {
     });
 }
 
+const scripts = {
+    "dist/blockData.json": path.join(__dirname, 'process-textures.js'),
+    "dist/blockLUT.bin": path.join(__dirname, 'generate-lut.js'),
+    "dist/atlas.png": path.join(__dirname, 'build-atlas.js'),
+}
 async function main() {
     const startTime = Date.now();
 
@@ -41,28 +46,12 @@ async function main() {
     fs.mkdirSync('dist', { recursive: true });
 
     try {
-        console.log(`Generating block average color LUT...`);
-        if (!fs.existsSync('dist/blockData.json')) {
-            await runScript(path.join(__dirname, 'process-textures.js'));
-            console.log('\tDone.');
-        } else {
-            console.log('\tSkipped (already exists).');
-        }
-
-        console.log(`Generating block pixel LUT...`);
-        if (!fs.existsSync('dist/blockLUT.bin')) {
-            await runScript(path.join(__dirname, 'generate-lut.js'));
-            console.log('\tDone.');
-        } else {
-            console.log('\tSkipped (already exists).');
-        }
-
-        console.log(`Building texture atlas...`);
-        if (!fs.existsSync('dist/atlas.png')) {
-            await runScript(path.join(__dirname, 'build-atlas.js'));
-            console.log('\tDone.');
-        } else {
-            console.log('\tSkipped (already exists).');
+        for (const [output, script] of Object.entries(scripts)) {
+            if (!fs.existsSync(output)) {
+                await runScript(script);
+            } else {
+                console.log(`Skipping ${path.basename(script)} (output exists)`);
+            }
         }
 
         // Step 4: Bundle JavaScript (using esbuild)
