@@ -4,18 +4,26 @@ import path from "path";
 import PImage from "pureimage";
 
 let validBlockData = {};
+
+// textures that look out of place imo
 const blacklist = [
     "debug",
     "debug2",
     "piston_inner",
-    "repeater",
-    "repeater_on",
+    "repeater.*",
+    "comparator.*",
     "dragon_egg",
     "structure_block.*",
     "jigsaw.*",
     ".*door.*",
     "respawn_anchor.*",
     "trial_spawner.*",
+    "vault_.*",
+    "lectern.*",
+    "bed.*",
+    "missing_tile",
+    "suspicious_.*",
+    "dried_ghast.*",
     "calibrated_sculk.*"
 ]
 
