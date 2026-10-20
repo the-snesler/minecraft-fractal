@@ -8,7 +8,15 @@ import * as PIXI from 'pixi.js';
 import { LUTDecoder } from './LUTDecoder.js';
 import { FractalLayerManager } from './FractalLayerManager.js';
 import { ZoomPanController } from './ZoomPanController.js';
+import { BlockGraph } from './BlockGraph.js';
+import { DiscoveryOutlines } from './DiscoveryOutlines.js';
+import { ScavengerHunt } from './ScavengerHunt.js';
+import { HuntUI } from './HuntUI.js';
+import { DailyChallenge } from './DailyChallenge.js';
+import { DailyUI } from './DailyUI.js';
+import { BlockArt } from './uiKit.js';
 import { CONFIG } from './config.js';
+import './hunt.css';
 
 class MinecraftFractalApp {
     constructor(containerId) {
@@ -17,6 +25,10 @@ class MinecraftFractalApp {
         this.layerManager = null;
         this.zoomController = null;
         this.lut = null;
+        this.hunt = null;
+        this.huntUI = null;
+        this.daily = null;
+        this.dailyUI = null;
     }
 
     async init() {
@@ -41,10 +53,12 @@ class MinecraftFractalApp {
             this.app.canvas.style.cursor = 'grab';
 
             // Load assets
-            const [atlasTexture, atlasMeta] = await Promise.all([
+            const [atlasTexture, atlasMeta, , dailySchedule] = await Promise.all([
                 PIXI.Assets.load('./dist/atlas.png'),
                 fetch('./dist/atlas.json').then((r) => r.json()),
                 this.loadLUT(),
+                // Optional: older builds have no daily schedule
+                fetch('./dist/daily.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
             ]);
 
             console.log(`Atlas: ${atlasMeta.blockCount} blocks`);
@@ -53,9 +67,13 @@ class MinecraftFractalApp {
             const spritesheet = new PIXI.Spritesheet(atlasTexture, atlasMeta);
             await spritesheet.parse();
 
+            // Fractal layers get their own container so overlays stay on top when layers swap
+            const fractalContainer = new PIXI.Container();
+            this.app.stage.addChild(fractalContainer);
+
             // Initialize layer manager
             this.layerManager = new FractalLayerManager(
-                this.app.stage,
+                fractalContainer,
                 spritesheet,
                 this.lut,
                 atlasMeta
@@ -65,6 +83,30 @@ class MinecraftFractalApp {
 
             // Initialize zoom/pan controller
             this.zoomController = new ZoomPanController(this.app.canvas);
+
+            // Block collection (outlines drawn above the fractal)
+            const graph = new BlockGraph(this.lut, this.layerManager.rootBlockId);
+            const outlines = new DiscoveryOutlines();
+            const art = new BlockArt(atlasMeta, this.lut, graph);
+            this.app.stage.addChild(outlines.container);
+            this.hunt = new ScavengerHunt({
+                graph,
+                lut: this.lut,
+                layerManager: this.layerManager,
+                outlines,
+            });
+            this.huntUI = new HuntUI(this.hunt, art);
+
+            // Daily block
+            if (dailySchedule) {
+                this.daily = new DailyChallenge({
+                    hunt: this.hunt,
+                    zoomController: this.zoomController,
+                    outlines,
+                    schedule: dailySchedule,
+                });
+                this.dailyUI = new DailyUI(this.daily, this.huntUI, art);
+            }
 
             // Handle resize
             window.addEventListener('resize', () => {
@@ -96,6 +138,9 @@ class MinecraftFractalApp {
         // Get state and update renderer
         const state = this.zoomController.getState();
         this.layerManager.update(state);
+        this.hunt.update();
+        this.huntUI.tick();
+        this.dailyUI?.tick();
         // debug
         document.getElementById('info').innerText = JSON.stringify(state, null, 2);
     }

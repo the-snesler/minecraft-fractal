@@ -3,7 +3,8 @@
  * 1. Generate block average color LUT (dist/blockData.json) if needed
  * 2. Generate block-to-block pixel LUT (dist/blockLUT.bin) if needed
  * 3. Build texture atlas if needed
- * 4. Bundle JavaScript
+ * 4. Generate the daily block schedule (dist/daily.json) if needed
+ * 5. Bundle JavaScript
  */
 
 import { spawn } from 'child_process';
@@ -38,6 +39,7 @@ const scripts = {
     "dist/blockData.json": path.join(__dirname, 'process-textures.js'),
     "dist/blockLUT.bin": path.join(__dirname, 'generate-lut.js'),
     "dist/atlas.png": path.join(__dirname, 'build-atlas.js'),
+    "dist/daily.json": path.join(__dirname, 'build-daily.js'),
 }
 async function main() {
     const startTime = Date.now();
@@ -54,7 +56,7 @@ async function main() {
             }
         }
 
-        // Step 4: Bundle JavaScript (using esbuild)
+        // Step 5: Bundle JavaScript (using esbuild)
         console.log(`Bundling JavaScript...`);
         await new Promise((resolve, reject) => {
             const proc = spawn('npx', ['esbuild', 'src/app.js', '--bundle', '--outfile=dist/app.js', '--format=esm', '--sourcemap'], {

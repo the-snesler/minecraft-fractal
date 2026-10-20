@@ -19,6 +19,15 @@ export class LUTDecoder {
     async load(url) {
         const response = await fetch(url);
         const buffer = await response.arrayBuffer();
+        this.parse(buffer);
+        console.log(`LUT loaded: ${this.blockCount} blocks, ${(buffer.byteLength / 1024).toFixed(1)} KB`);
+    }
+
+    /**
+     * Decode LUT from an ArrayBuffer (shared by the browser and build scripts)
+     * @param {ArrayBuffer} buffer - Contents of blockLUT.bin
+     */
+    parse(buffer) {
         const data = new DataView(buffer);
         const bytes = new Uint8Array(buffer);
 
@@ -55,8 +64,6 @@ export class LUTDecoder {
         const lutSize = this.blockCount * 256;
         const lutBytes = bytes.slice(offset, offset + lutSize * 2);
         this.lut = new Uint16Array(lutBytes.buffer);
-
-        console.log(`LUT loaded: ${this.blockCount} blocks, ${(buffer.byteLength / 1024).toFixed(1)} KB`);
     }
 
     /**

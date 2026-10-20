@@ -26,6 +26,14 @@ export class FractalLayer {
         // Sprite pool
         this.sprites = [];
         this.activeCount = 0;
+
+        // Grid placement from the last render (block IDs are row-major)
+        this.blockIds = [];
+        this.scale = 0;
+        this.cols = 0;
+        this.rows = 0;
+        this.originX = 0;
+        this.originY = 0;
     }
 
     getTexture(blockId) {
@@ -148,6 +156,13 @@ export class FractalLayer {
         const fracX = centerX - Math.floor(centerX);
         const fracY = centerY - Math.floor(centerY);
 
+        // Remember grid placement so on-screen blocks can be queried after rendering
+        this.scale = scale;
+        this.cols = visibleX;
+        this.rows = visibleY;
+        this.originX = screenWidth / 2 - (Math.floor(visibleX / 2) + fracX) * scale;
+        this.originY = screenHeight / 2 - (Math.floor(visibleY / 2) + fracY) * scale;
+
         let spriteIndex = 0;
 
         for (let dy = 0; dy < visibleY; dy++) {
@@ -157,6 +172,8 @@ export class FractalLayer {
 
                 // Resolve block at this position using layer stack
                 const blockId = this.resolveBlock(blockX, blockY, depth, rootBlockId, layerStack);
+
+                this.blockIds[spriteIndex] = blockId;
 
                 // Get sprite from pool
                 const sprite = this.sprites[spriteIndex++];
@@ -180,6 +197,27 @@ export class FractalLayer {
         this.activeCount = spriteIndex;
         for (let i = spriteIndex; i < this.sprites.length; i++) {
             this.sprites[i].visible = false;
+        }
+    }
+
+    /**
+     * Call `callback(blockId, x, y, size)` for each block rendered by the last
+     * render() whose center lies inside the given screen rectangle
+     */
+    forEachInRect(left, top, right, bottom, callback) {
+        const { scale, cols, rows, originX, originY } = this;
+        if (!scale) return;
+
+        // Block (col, row) is centered at origin + (index + 0.5) * scale
+        const colStart = Math.max(0, Math.ceil((left - originX) / scale - 0.5));
+        const colEnd = Math.min(cols, Math.ceil((right - originX) / scale - 0.5));
+        const rowStart = Math.max(0, Math.ceil((top - originY) / scale - 0.5));
+        const rowEnd = Math.min(rows, Math.ceil((bottom - originY) / scale - 0.5));
+
+        for (let row = rowStart; row < rowEnd; row++) {
+            for (let col = colStart; col < colEnd; col++) {
+                callback(this.blockIds[row * cols + col], originX + col * scale, originY + row * scale, scale);
+            }
         }
     }
 

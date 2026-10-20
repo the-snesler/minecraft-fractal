@@ -39,6 +39,9 @@ export class FractalLayerManager {
         // Screen dimensions
         this.screenWidth = 800;
         this.screenHeight = 600;
+
+        // Layers drawn by the last update, with their opacity
+        this.visibleLayers = [];
     }
 
     setScreenSize(width, height) {
@@ -66,6 +69,10 @@ export class FractalLayerManager {
 
             this.currentLayer.container.alpha = 1;
             this.nextLayer.container.alpha = progress;
+            this.visibleLayers = [
+                { layer: this.currentLayer, alpha: 1 },
+                { layer: this.nextLayer, alpha: progress },
+            ];
 
             // Render current layer
             this.currentLayer.render(
@@ -109,6 +116,7 @@ export class FractalLayerManager {
             // Not transitioning
             this.currentLayer.container.alpha = 1;
             this.nextLayer.container.alpha = 0;
+            this.visibleLayers = [{ layer: this.currentLayer, alpha: 1 }];
 
             this.currentLayer.render(
                 centerX,

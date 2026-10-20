@@ -13,6 +13,22 @@ export class ZoomPanController {
         this.canvas = canvas;
         this.onUpdate = onUpdate;
 
+        // Zoom, layer stack, and drag state
+        this.reset();
+        this.lastMouseX = 0;
+        this.lastMouseY = 0;
+
+        // Touch state
+        this.lastTouchDistance = 0;
+        this.lastTouchCenter = { x: 0, y: 0 };
+
+        this.bindEvents();
+    }
+
+    /**
+     * Return to the starting view (root block, unzoomed, centered)
+     */
+    reset() {
         // Zoom state
         this.targetZoom = 0;
         this.currentZoom = 0;
@@ -26,17 +42,9 @@ export class ZoomPanController {
 
         // Drag state
         this.isDragging = false;
-        this.lastMouseX = 0;
-        this.lastMouseY = 0;
 
         // Zoom anchor (screen-space point to zoom towards)
         this.zoomAnchor = null;
-
-        // Touch state
-        this.lastTouchDistance = 0;
-        this.lastTouchCenter = { x: 0, y: 0 };
-
-        this.bindEvents();
     }
 
     bindEvents() {
