@@ -1,5 +1,5 @@
 A proof of concept project that allows one to infinitely zoom in to a Minecraft block grid, inspired by [this reddit post](https://www.reddit.com/r/Minecraft/comments/142i5h8/i_programmed_this_infinite_block_recursion_now/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button).
-It is, in theory, possible to zoom in indefinitely! It gets slower the more you zoom in, but that's the price of allowing you to zoom out too.
+Because it operates based on a stack, you can zoom in almost infinitely and it's buttery smooth the whole way. Try to find all the blocks!
 
 ![fractalexample](https://github.com/TetraTsunami/minecraft-fractal/assets/78718829/eb76bac9-ed27-4feb-a016-66fd3f5d4e87)
 
